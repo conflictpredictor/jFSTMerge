@@ -35,7 +35,10 @@ import com.beust.jcommander.ParameterException;
  * @author Guilherme
  */
 public class JFSTMerge {
-
+	
+	//#conflictsAnalyzer 
+	SemistructuredMerge semistructuredMerge = new SemistructuredMerge();
+	//#conflictsAnalyzer 
 	//log of activities
 	private static final Logger LOGGER = LoggerFactory.make();
 
@@ -47,7 +50,7 @@ public class JFSTMerge {
 	List<String> filespath = new ArrayList<String>();
 
 	@Parameter(names = "-d", arity = 3, description = "Directories to be merged (mine, base, yours)")
-	List<String> directoriespath = new ArrayList<String>();;
+	List<String> directoriespath = new ArrayList<String>();
 
 	@Parameter(names = "-o", description = "Destination of the merged content. Optional. If no destination is specified, "
 			+ "then it will use \"yours\" as the destination for the merge. ")
@@ -55,7 +58,8 @@ public class JFSTMerge {
 
 	@Parameter(names = "-g", description = "Command to identify that the tool is being used as a git merge driver.")
 	public static boolean isGit = false;
-
+	
+	
 	/**
 	 * Merges merge scenarios, indicated by .revisions files. 
 	 * This is mainly used for evaluation purposes.
@@ -103,6 +107,17 @@ public class JFSTMerge {
 		}
 		return scenario;
 	}
+	
+	//#conflictsAnalyzer 
+	public SemistructuredMerge getSemistructuredMerge() {
+		return semistructuredMerge;
+	}
+
+	public void setSemistructuredMerge(SemistructuredMerge semistructuredMerge) {
+		this.semistructuredMerge = semistructuredMerge;
+	}
+	//#conflictsAnalyzer 
+
 
 	/**
 	 * Merges directories.
@@ -170,7 +185,7 @@ public class JFSTMerge {
 			try{
 				//run unstructured merge first is necessary due to future steps.
 				context.unstructuredOutput 	= TextualMerge.merge(left, base, right, false);		
-				context.semistructuredOutput= SemistructuredMerge.merge(left, base, right,context);
+				context.semistructuredOutput= this.semistructuredMerge.merge(left, base, right,context);
 				conflictState = checkConflictState(context);
 
 			} catch(TextualMergeException tme){ //textual merge must work even when semistructured not, so this exception precedes others
