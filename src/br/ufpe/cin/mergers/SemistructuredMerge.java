@@ -272,7 +272,7 @@ public class SemistructuredMerge extends Observable
 				String mergedBodyContent = TextualMerge.merge(leftContent, baseContent, rightContent, true);
 				
 				((FSTTerminal) node).setBody(mergedBodyContent);
-				
+				this.checkForConflictMarkers((FSTTerminal) node);
 
 				identifyNodesEditedInOnlyOneVersion(node, context, leftContent, baseContent, rightContent);
 
