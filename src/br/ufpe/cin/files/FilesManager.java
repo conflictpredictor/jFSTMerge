@@ -535,7 +535,8 @@ public final class FilesManager {
 		String basecontentrim = (auxbase == null)?"":FilesManager.getStringContentIntoSingleLineNoSpacing(auxbase);
 
 		//comparing files content
-		if(basecontentrim.equals(leftcontenttrim)){
+		//#conflictsAnalyzer
+		/*if(basecontentrim.equals(leftcontenttrim)){
 			//result is right
 			context.semistructuredOutput = rightcontent;
 			context.unstructuredOutput = rightcontent;
@@ -545,7 +546,9 @@ public final class FilesManager {
 			context.semistructuredOutput = leftcontent;
 			context.unstructuredOutput = leftcontent;
 			result = false;
-		} else if(leftcontenttrim.equals(rightcontenttrim)){
+		} else */
+		//#conflictsAnalyzer
+			if(leftcontenttrim.equals(rightcontenttrim)){
 			//result is both left or right
 			context.semistructuredOutput = leftcontent;
 			context.unstructuredOutput = leftcontent;

@@ -56,7 +56,8 @@ public final class TextualMerge {
 		textualMergeResult = merge(leftContent,baseContent,rightContent,ignoreWhiteSpaces);
 		return textualMergeResult;
 	}
-
+	
+	
 	/**
 	 * Merges textually three strings.
 	 * @param leftContent
@@ -66,6 +67,7 @@ public final class TextualMerge {
 	 * @return merged string.
 	 * @throws TextualMergeException 
 	 */
+	
 	public static String merge(String leftContent, String baseContent, String rightContent, boolean ignoreWhiteSpaces) throws TextualMergeException{
 		String textualMergeResult = null;
 		try{
@@ -83,4 +85,14 @@ public final class TextualMerge {
 		}
 		return textualMergeResult;
 	}
+	
+	//#conflictsAnalyzer
+	public static String merge(String leftContent, String baseContent, String rightContent, String nodeBody) throws TextualMergeException{
+		String textualMergeResult = null;
+		
+	
+		return textualMergeResult;
+	}
+	//#conflictsAnalyzer
+	
 }
