@@ -38,6 +38,7 @@ public class JFSTMerge {
 	
 	//#conflictsAnalyzer 
 	SemistructuredMerge semistructuredMerge = new SemistructuredMerge();
+	MergeContext context;
 	//#conflictsAnalyzer 
 	//log of activities
 	private static final Logger LOGGER = LoggerFactory.make();
@@ -116,6 +117,13 @@ public class JFSTMerge {
 	public void setSemistructuredMerge(SemistructuredMerge semistructuredMerge) {
 		this.semistructuredMerge = semistructuredMerge;
 	}
+	
+	public MergeContext getContext(){
+		return this.context;
+	}
+	public void setContext(MergeContext context){
+		this.context = context;
+	}
 	//#conflictsAnalyzer 
 
 
@@ -143,7 +151,7 @@ public class JFSTMerge {
 			File right= tuple.getRightFile();
 
 			//merging the file tuple
-			MergeContext context = mergeFiles(left, base, right, null);
+			this.context = mergeFiles(left, base, right, null);
 			tuple.setContext(context);
 
 			//printing the resulting merged code
