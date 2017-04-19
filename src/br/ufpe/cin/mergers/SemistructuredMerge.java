@@ -269,7 +269,7 @@ public class SemistructuredMerge extends Observable
 				String baseContent = splittedBodyContent[1].trim();
 				String rightContent = splittedBodyContent[2].trim();
 
-				String mergedBodyContent = TextualMerge.merge(leftContent, baseContent, rightContent, body);
+				String mergedBodyContent = TextualMerge.merge(leftContent, baseContent, rightContent, (FSTTerminal) node);
 				
 				((FSTTerminal) node).setBody(mergedBodyContent);
 				//#conflictsAnalyzer
