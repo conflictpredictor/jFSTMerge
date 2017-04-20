@@ -88,6 +88,10 @@ public class SemistructuredMerge extends Observable
 		FSTNode mergeLeftBase = superimpose(left, base, null, context, true);
 		FSTNode mergeLeftBaseRight = superimpose(mergeLeftBase, right, null, context, false);
 		removeRemainingBaseNodes(mergeLeftBaseRight, context);
+		//#conflictsAnalyzer
+		setChanged();
+		notifyObservers(context);
+		//#conflictsAnalyzer
 		mergeMatchedContent(mergeLeftBaseRight, context);
 		context.superImposedTree = mergeLeftBaseRight;
 		return context;
