@@ -94,7 +94,7 @@ public final class TextualMerge {
 	
 	//#conflictsAnalyzer
 	public static String merge(String leftContent, String baseContent, String rightContent, FSTTerminal node) throws TextualMergeException{
-		String textualMergeResult = null;
+		String textualMergeResult = "";
 		
 		try {
 			long time = System.currentTimeMillis();
