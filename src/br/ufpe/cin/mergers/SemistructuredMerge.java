@@ -51,6 +51,7 @@ public class SemistructuredMerge extends Observable
 	 */
 	public String merge(File left, File base, File right, MergeContext context)	throws SemistructuredMergeException, TextualMergeException {
 		try {
+			String filePath = left.getAbsolutePath();
 			// parsing the files to be merged
 			JParser parser = new JParser();
 			FSTNode leftTree = parser.parse(left);
@@ -58,7 +59,7 @@ public class SemistructuredMerge extends Observable
 			FSTNode rightTree = parser.parse(right);
 
 			// merging
-			context.join(merge(leftTree, baseTree, rightTree));
+			context.join(merge(leftTree, baseTree, rightTree, filePath));
 
 			// handling special kinds of conflicts
 			ConflictsHandler.handle(context);
@@ -78,7 +79,7 @@ public class SemistructuredMerge extends Observable
 	 * @param right tree
 	 * @throws TextualMergeException
 	 */
-	private MergeContext merge(FSTNode left, FSTNode base, FSTNode right) throws TextualMergeException {
+	private MergeContext merge(FSTNode left, FSTNode base, FSTNode right, String filePath) throws TextualMergeException {
 		// indexes are necessary to a proper matching between nodes
 		left.index 	= 0;
 		base.index 	= 1;
@@ -92,7 +93,7 @@ public class SemistructuredMerge extends Observable
 		setChanged();
 		notifyObservers(context);
 		//#conflictsAnalyzer
-		mergeMatchedContent(mergeLeftBaseRight, context);
+		mergeMatchedContent(mergeLeftBaseRight, context, filePath);
 		context.superImposedTree = mergeLeftBaseRight;
 		return context;
 	}
@@ -259,10 +260,10 @@ public class SemistructuredMerge extends Observable
 	 * @param node to be merged
 	 * @throws TextualMergeException
 	 */
-	private void mergeMatchedContent(FSTNode node, MergeContext context) throws TextualMergeException {
+	private void mergeMatchedContent(FSTNode node, MergeContext context, String filePath) throws TextualMergeException {
 		if (node instanceof FSTNonTerminal) {
 			for (FSTNode child : ((FSTNonTerminal) node).getChildren())
-				mergeMatchedContent(child, context);
+				mergeMatchedContent(child, context, filePath);
 		} else if (node instanceof FSTTerminal) {
 			if (((FSTTerminal) node).getBody().contains(SemistructuredMerge.MERGE_SEPARATOR)) {
 				String body = ((FSTTerminal) node).getBody() + " ";
@@ -277,7 +278,7 @@ public class SemistructuredMerge extends Observable
 				
 				((FSTTerminal) node).setBody(mergedBodyContent);
 				//#conflictsAnalyzer
-				this.checkForConflictMarkers((FSTTerminal) node);
+				this.checkForConflictMarkers((FSTTerminal) node, filePath);
 				//#conflictsAnalyzer
 
 				identifyNodesEditedInOnlyOneVersion(node, context, leftContent, baseContent, rightContent);
@@ -290,11 +291,12 @@ public class SemistructuredMerge extends Observable
 	}
 	
 	//#conflictsAnalyzer
-	public void checkForConflictMarkers(FSTTerminal node){
+	public void checkForConflictMarkers(FSTTerminal node, String filePath){
 		String nodeBody = node.getBody();
 		if(nodeBody.contains(SemistructuredMerge.MERGE_SEPARATOR) || nodeBody.contains(SemistructuredMerge.DIFF3MERGE_SEPARATOR)){
+			NodeAndPath nodeAndPath = new NodeAndPath(node, filePath);
 			setChanged();
-			notifyObservers(node);
+			notifyObservers(nodeAndPath);
 			
 		}
 		
