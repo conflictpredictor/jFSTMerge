@@ -73,7 +73,6 @@ public final class TextualMerge {
 	 * @return merged string.
 	 * @throws TextualMergeException 
 	 */
-
 	public static String merge(String leftContent, String baseContent, String rightContent, boolean ignoreWhiteSpaces) throws TextualMergeException{
 		String textualMergeResult = null;
 		try{
@@ -91,152 +90,146 @@ public final class TextualMerge {
 		}
 		return textualMergeResult;
 	}
-
+	
 	//#conflictsAnalyzer
-	public static String merge(String leftContent, String baseContent, String rightContent, FSTTerminal node) throws TextualMergeException{
+	public static String mergeDiff3(String leftContent, String baseContent, String rightContent, FSTTerminal node) throws TextualMergeException{
 		String textualMergeResult = "";
-		String nodeType = node.getType();
-		boolean isMethodOrFD = nodeType.equals("FieldDecl") || nodeType.equals("MethodDecl") || nodeType.equals("ConstructorDecl");
-		if(!isMethodOrFD){
-			textualMergeResult = TextualMerge.merge(leftContent, baseContent, rightContent, true);
-		}else{
-			try {
-				long time = System.currentTimeMillis();
-				File tmpDir = new File(System.getProperty("user.dir") + File.separator + "fstmerge_tmp"+time);
-				tmpDir.mkdir();
-				File fileVar1 = File.createTempFile("fstmerge_var1_", "", tmpDir);
-				File fileBase = File.createTempFile("fstmerge_base_", "", tmpDir);
-				File fileVar2 = File.createTempFile("fstmerge_var2_", "", tmpDir);
 
-				BufferedWriter writerVar1 = new BufferedWriter(new FileWriter(fileVar1));
-				if(leftContent.length() == 0){
-					writerVar1.write(leftContent);
-				}else{
-					writerVar1.write(leftContent + "\n");
-				}
-				writerVar1.close();
+		try {
+			long time = System.currentTimeMillis();
+			File tmpDir = new File(System.getProperty("user.dir") + File.separator + "fstmerge_tmp"+time);
+			tmpDir.mkdir();
+			File fileVar1 = File.createTempFile("fstmerge_var1_", "", tmpDir);
+			File fileBase = File.createTempFile("fstmerge_base_", "", tmpDir);
+			File fileVar2 = File.createTempFile("fstmerge_var2_", "", tmpDir);
+			
+			BufferedWriter writerVar1 = new BufferedWriter(new FileWriter(fileVar1));
+			if(leftContent.length() == 0){
+				writerVar1.write(leftContent);
+			}else{
+				writerVar1.write(leftContent + "\n");
+			}
+			writerVar1.close();
 
-				BufferedWriter writerBase = new BufferedWriter(new FileWriter(fileBase));
-				if(baseContent.length() == 0){
-					writerBase.write(baseContent);
-				}else {
-					writerBase.write(baseContent + "\n");
-				}	
-				writerBase.close();
+			BufferedWriter writerBase = new BufferedWriter(new FileWriter(fileBase));
+			if(baseContent.length() == 0){
+				writerBase.write(baseContent);
+			}else {
+				writerBase.write(baseContent + "\n");
+			}	
+			writerBase.close();
 
-				BufferedWriter writerVar2 = new BufferedWriter(new FileWriter(fileVar2));
-				if(rightContent.length() == 0){
-					writerVar2.write(rightContent);
-				}else {
-					writerVar2.write(rightContent + "\n");
-				}
-				writerVar2.close();
+			BufferedWriter writerVar2 = new BufferedWriter(new FileWriter(fileVar2));
+			if(rightContent.length() == 0){
+				writerVar2.write(rightContent);
+			}else {
+				writerVar2.write(rightContent + "\n");
+			}
+			writerVar2.close();
+			
+			String mergeCmd = ""; 
+			if(System.getProperty("os.name").contains("Windows")){
+				mergeCmd = "C:\\Programme\\cygwin\\bin\\merge.exe -q -p " + "\"" + fileVar1.getPath() + "\"" + " " + "\"" + fileBase.getPath() + "\"" + " " + "\"" + fileVar2.getPath() + "\"";// + " > " + fileVar1.getName() + "_output";
+			}else{
+				mergeCmd = "diff3 --merge -E " + fileVar1.getPath() + " " + fileBase.getPath() + " " + fileVar2.getPath();// + " > " + fileVar1.getName() + "_output";
+			}
 
-				String mergeCmd = ""; 
-				if(System.getProperty("os.name").contains("Windows")){
-					mergeCmd = "C:\\Programme\\cygwin\\bin\\merge.exe -q -p " + "\"" + fileVar1.getPath() + "\"" + " " + "\"" + fileBase.getPath() + "\"" + " " + "\"" + fileVar2.getPath() + "\"";// + " > " + fileVar1.getName() + "_output";
-				}else{
-					mergeCmd = "diff3 --merge -E " + fileVar1.getPath() + " " + fileBase.getPath() + " " + fileVar2.getPath();// + " > " + fileVar1.getName() + "_output";
-				}
+			Runtime run = Runtime.getRuntime();
+			Process pr = run.exec(mergeCmd);
+			
+			BufferedReader buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+			String line = "";
+			while ((line=buf.readLine())!=null) {
+				textualMergeResult += line + "\n";
+			}
+			pr.getInputStream().close();
+			
+			if(textualMergeResult.contains(SemistructuredMerge.DIFF3MERGE_SEPARATOR)){
+				mergeCmd = "diff3 --merge " + fileVar1.getPath() + " " + fileBase.getPath() + " " + fileVar2.getPath();// + " > " + fileVar1.getName() + "_output";
+				run = Runtime.getRuntime();
+				pr = run.exec(mergeCmd);
 
-				Runtime run = Runtime.getRuntime();
-				Process pr = run.exec(mergeCmd);
-
-				BufferedReader buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-				String line = "";
+				buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+				line = "";
+				textualMergeResult = "";
 				while ((line=buf.readLine())!=null) {
 					textualMergeResult += line + "\n";
 				}
 				pr.getInputStream().close();
 
-
-				if(textualMergeResult.contains(SemistructuredMerge.DIFF3MERGE_SEPARATOR)){
-					mergeCmd = "diff3 --merge " + fileVar1.getPath() + " " + fileBase.getPath() + " " + fileVar2.getPath();// + " > " + fileVar1.getName() + "_output";
-					run = Runtime.getRuntime();
-					pr = run.exec(mergeCmd);
-
-					buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-					line = "";
-					textualMergeResult = "";
-					while ((line=buf.readLine())!=null) {
-						textualMergeResult += line + "\n";
-					}
-					pr.getInputStream().close();
-
-				}
-				//conflictPredictor
-				else{
-					String[] tokens = {leftContent, baseContent, rightContent};
-					if(isConflictPredictor(node, tokens)){
-						textualMergeResult = node.getBody();
-					}
-				}
-				//conflictPredictor
-
-				buf = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
-				while ((line=buf.readLine())!=null) {
-					System.err.println(line);
-				}
-				pr.getErrorStream().close();
-				pr.getOutputStream().close();
-
-				fileVar1.delete();
-				fileBase.delete();
-				fileVar2.delete();
-				tmpDir.delete();
-
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
+			//conflictPredictor
+			else{
+				String[] tokens = {leftContent, baseContent, rightContent};
+				if(isConflictPredictor(node, tokens)){
+					textualMergeResult = node.getBody();
+				}
+			}
+			//conflictPredictor
+			
+			buf = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
+			while ((line=buf.readLine())!=null) {
+				System.err.println(line);
+			}
+			pr.getErrorStream().close();
+			pr.getOutputStream().close();
+
+			fileVar1.delete();
+			fileBase.delete();
+			fileVar2.delete();
+			tmpDir.delete();
+
+
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 
 		return textualMergeResult;
 	}
 	//#conflictsAnalyzer
-
+	
 	//conflictPredictor
-	/*the node represents a conflict predictor in the following cases:
-	 * 1- it is a method or constructor and at least one version was edited
-	 * 2- it is a class field, BOTH versions were edited, and the base 
-	 * version is not empty */
-	private static boolean isConflictPredictor(FSTTerminal node, String[] tokens){
-		boolean result = false;
-		if((isMethodOrConstructor(node.getType()) && atLeastOneVersionWasEdited(tokens)) ||
-				(node.getType().equals("FieldDecl") && bothVersionsWereDifferentlyEdited(tokens) 
-						&& !tokens[1].equals("")) ){
-			result = true;
+		/*the node represents a conflict predictor in the following cases:
+		 * 1- it is a method or constructor and at least one version was edited
+		 * 2- it is a class field, BOTH versions were edited, and the base 
+		 * version is not empty */
+		private static boolean isConflictPredictor(FSTTerminal node, String[] tokens){
+			boolean result = false;
+			if((isMethodOrConstructor(node.getType()) && atLeastOneVersionWasEdited(tokens)) ||
+					(node.getType().equals("FieldDecl") && bothVersionsWereDifferentlyEdited(tokens) 
+							&& !tokens[1].equals("")) ){
+				result = true;
+			}
+			return result;
 		}
-		return result;
-	}
-
-	public static boolean isMethodOrConstructor(String type){
-		boolean result = type.equals("MethodDecl") || type.equals("ConstructorDecl");	
-		return result;
-	}
-
-	/* #conflictsAnalyzer 
-	 * returns true if at least one version (left or right) differs from base*/
-	private static boolean atLeastOneVersionWasEdited(String[] tokens){
-		boolean result = false;
-		if( !tokens[0].equals("") && !tokens[2].equals("") && !tokens[1].equals("") &&
-				( !tokens[0].equals(tokens[1]) || !tokens[2].equals(tokens[1]) ) &&
-				!tokens[0].equals(tokens[2])){
-			result = true;
+		
+		public static boolean isMethodOrConstructor(String type){
+			boolean result = type.equals("MethodDecl") || type.equals("ConstructorDecl");	
+			return result;
 		}
-		return result;
-	}
-
-	private static boolean bothVersionsWereDifferentlyEdited(String[] tokens){
-		boolean result = false;
-		if( !tokens[0].equals("") && !tokens[2].equals("") 
-				&& !tokens[1].equals("") &&  !tokens[0].equals(tokens[1]) 
-				&& !tokens[2].equals(tokens[1]) && !tokens[2].equals(tokens[0])){
-			result = true;
+		
+		/* #conflictsAnalyzer 
+		 * returns true if at least one version (left or right) differs from base*/
+		private static boolean atLeastOneVersionWasEdited(String[] tokens){
+			boolean result = false;
+			if( !tokens[0].equals("") && !tokens[2].equals("") && !tokens[1].equals("") &&
+					( !tokens[0].equals(tokens[1]) || !tokens[2].equals(tokens[1]) ) &&
+					!tokens[0].equals(tokens[2])){
+				result = true;
+			}
+			return result;
 		}
-		return result;
-	}
+		
+		private static boolean bothVersionsWereDifferentlyEdited(String[] tokens){
+			boolean result = false;
+			if( !tokens[0].equals("") && !tokens[2].equals("") 
+					&& !tokens[1].equals("") &&  !tokens[0].equals(tokens[1]) 
+					&& !tokens[2].equals(tokens[1]) && !tokens[2].equals(tokens[0])){
+				result = true;
+			}
+			return result;
+		}
 
-	//conflictPredictor
+		//conflictPredictor
 
 }
