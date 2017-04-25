@@ -62,8 +62,8 @@ public final class TextualMerge {
 		textualMergeResult = merge(leftContent,baseContent,rightContent,ignoreWhiteSpaces);
 		return textualMergeResult;
 	}
-	
-	
+
+
 	/**
 	 * Merges textually three strings.
 	 * @param leftContent
@@ -73,7 +73,7 @@ public final class TextualMerge {
 	 * @return merged string.
 	 * @throws TextualMergeException 
 	 */
-	
+
 	public static String merge(String leftContent, String baseContent, String rightContent, boolean ignoreWhiteSpaces) throws TextualMergeException{
 		String textualMergeResult = null;
 		try{
@@ -91,107 +91,110 @@ public final class TextualMerge {
 		}
 		return textualMergeResult;
 	}
-	
+
 	//#conflictsAnalyzer
 	public static String merge(String leftContent, String baseContent, String rightContent, FSTTerminal node) throws TextualMergeException{
 		String textualMergeResult = "";
-		
-		try {
-			long time = System.currentTimeMillis();
-			File tmpDir = new File(System.getProperty("user.dir") + File.separator + "fstmerge_tmp"+time);
-			tmpDir.mkdir();
-			File fileVar1 = File.createTempFile("fstmerge_var1_", "", tmpDir);
-			File fileBase = File.createTempFile("fstmerge_base_", "", tmpDir);
-			File fileVar2 = File.createTempFile("fstmerge_var2_", "", tmpDir);
-			
-			BufferedWriter writerVar1 = new BufferedWriter(new FileWriter(fileVar1));
-			if(node.getType().contains("-Content") || leftContent.length() == 0){
-				writerVar1.write(leftContent);
-			}else{
-				writerVar1.write(leftContent + "\n");
-			}
-			writerVar1.close();
-			
-			BufferedWriter writerBase = new BufferedWriter(new FileWriter(fileBase));
-			if(node.getType().contains("-Content") || baseContent.length() == 0){
-				writerBase.write(baseContent);
-			}else {
-				writerBase.write(baseContent + "\n");
-			}	
-			writerBase.close();
-			
-			BufferedWriter writerVar2 = new BufferedWriter(new FileWriter(fileVar2));
-			if(node.getType().contains("-Content") || rightContent.length() == 0){
-				writerVar2.write(rightContent);
-			}else {
-				writerVar2.write(rightContent + "\n");
-			}
-			writerVar2.close();
-			
-			String mergeCmd = ""; 
-			if(System.getProperty("os.name").contains("Windows")){
-				mergeCmd = "C:\\Programme\\cygwin\\bin\\merge.exe -q -p " + "\"" + fileVar1.getPath() + "\"" + " " + "\"" + fileBase.getPath() + "\"" + " " + "\"" + fileVar2.getPath() + "\"";// + " > " + fileVar1.getName() + "_output";
-			}else{
-				mergeCmd = "diff3 --merge -E " + fileVar1.getPath() + " " + fileBase.getPath() + " " + fileVar2.getPath();// + " > " + fileVar1.getName() + "_output";
-			}
-			
-			Runtime run = Runtime.getRuntime();
-			Process pr = run.exec(mergeCmd);
-			
-			BufferedReader buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-			String line = "";
-			while ((line=buf.readLine())!=null) {
-				textualMergeResult += line + "\n";
-			}
-			pr.getInputStream().close();
-			
-			
-			if(textualMergeResult.contains(SemistructuredMerge.DIFF3MERGE_SEPARATOR)){
-				mergeCmd = "diff3 --merge " + fileVar1.getPath() + " " + fileBase.getPath() + " " + fileVar2.getPath();// + " > " + fileVar1.getName() + "_output";
-				run = Runtime.getRuntime();
-				pr = run.exec(mergeCmd);
+		String nodeType = node.getType();
+		boolean isMethodOrFD = nodeType.equals("FieldDecl") || nodeType.equals("MethodDecl") || nodeType.equals("ConstructorDecl");
+		if(!isMethodOrFD){
+			textualMergeResult = TextualMerge.merge(leftContent, baseContent, rightContent, true);
+		}else{
+			try {
+				long time = System.currentTimeMillis();
+				File tmpDir = new File(System.getProperty("user.dir") + File.separator + "fstmerge_tmp"+time);
+				tmpDir.mkdir();
+				File fileVar1 = File.createTempFile("fstmerge_var1_", "", tmpDir);
+				File fileBase = File.createTempFile("fstmerge_base_", "", tmpDir);
+				File fileVar2 = File.createTempFile("fstmerge_var2_", "", tmpDir);
 
-				buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-				line = "";
-				textualMergeResult = "";
+				BufferedWriter writerVar1 = new BufferedWriter(new FileWriter(fileVar1));
+				if(leftContent.length() == 0){
+					writerVar1.write(leftContent);
+				}else{
+					writerVar1.write(leftContent + "\n");
+				}
+				writerVar1.close();
+
+				BufferedWriter writerBase = new BufferedWriter(new FileWriter(fileBase));
+				if(baseContent.length() == 0){
+					writerBase.write(baseContent);
+				}else {
+					writerBase.write(baseContent + "\n");
+				}	
+				writerBase.close();
+
+				BufferedWriter writerVar2 = new BufferedWriter(new FileWriter(fileVar2));
+				if(rightContent.length() == 0){
+					writerVar2.write(rightContent);
+				}else {
+					writerVar2.write(rightContent + "\n");
+				}
+				writerVar2.close();
+
+				String mergeCmd = ""; 
+				if(System.getProperty("os.name").contains("Windows")){
+					mergeCmd = "C:\\Programme\\cygwin\\bin\\merge.exe -q -p " + "\"" + fileVar1.getPath() + "\"" + " " + "\"" + fileBase.getPath() + "\"" + " " + "\"" + fileVar2.getPath() + "\"";// + " > " + fileVar1.getName() + "_output";
+				}else{
+					mergeCmd = "diff3 --merge -E " + fileVar1.getPath() + " " + fileBase.getPath() + " " + fileVar2.getPath();// + " > " + fileVar1.getName() + "_output";
+				}
+
+				Runtime run = Runtime.getRuntime();
+				Process pr = run.exec(mergeCmd);
+
+				BufferedReader buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+				String line = "";
 				while ((line=buf.readLine())!=null) {
 					textualMergeResult += line + "\n";
 				}
 				pr.getInputStream().close();
 
-			}
-			//conflictPredictor
-			else{
-				String[] tokens = {leftContent, baseContent, rightContent};
-				if(isConflictPredictor(node, tokens)){
-					textualMergeResult = node.getBody();
+
+				if(textualMergeResult.contains(SemistructuredMerge.DIFF3MERGE_SEPARATOR)){
+					mergeCmd = "diff3 --merge " + fileVar1.getPath() + " " + fileBase.getPath() + " " + fileVar2.getPath();// + " > " + fileVar1.getName() + "_output";
+					run = Runtime.getRuntime();
+					pr = run.exec(mergeCmd);
+
+					buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+					line = "";
+					textualMergeResult = "";
+					while ((line=buf.readLine())!=null) {
+						textualMergeResult += line + "\n";
+					}
+					pr.getInputStream().close();
+
 				}
-			}
-			//conflictPredictor
-			
-			buf = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
-			while ((line=buf.readLine())!=null) {
-				System.err.println(line);
-			}
-			pr.getErrorStream().close();
-			pr.getOutputStream().close();
+				//conflictPredictor
+				else{
+					String[] tokens = {leftContent, baseContent, rightContent};
+					if(isConflictPredictor(node, tokens)){
+						textualMergeResult = node.getBody();
+					}
+				}
+				//conflictPredictor
 
-			fileVar1.delete();
-			fileBase.delete();
-			fileVar2.delete();
-			tmpDir.delete();
-				
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+				buf = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
+				while ((line=buf.readLine())!=null) {
+					System.err.println(line);
+				}
+				pr.getErrorStream().close();
+				pr.getOutputStream().close();
+
+				fileVar1.delete();
+				fileBase.delete();
+				fileVar2.delete();
+				tmpDir.delete();
+
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
-		
 
-	
 		return textualMergeResult;
 	}
 	//#conflictsAnalyzer
-	
+
 	//conflictPredictor
 	/*the node represents a conflict predictor in the following cases:
 	 * 1- it is a method or constructor and at least one version was edited
@@ -206,12 +209,12 @@ public final class TextualMerge {
 		}
 		return result;
 	}
-	
+
 	public static boolean isMethodOrConstructor(String type){
 		boolean result = type.equals("MethodDecl") || type.equals("ConstructorDecl");	
 		return result;
 	}
-	
+
 	/* #conflictsAnalyzer 
 	 * returns true if at least one version (left or right) differs from base*/
 	private static boolean atLeastOneVersionWasEdited(String[] tokens){
@@ -223,7 +226,7 @@ public final class TextualMerge {
 		}
 		return result;
 	}
-	
+
 	private static boolean bothVersionsWereDifferentlyEdited(String[] tokens){
 		boolean result = false;
 		if( !tokens[0].equals("") && !tokens[2].equals("") 
@@ -235,5 +238,5 @@ public final class TextualMerge {
 	}
 
 	//conflictPredictor
-	
+
 }
