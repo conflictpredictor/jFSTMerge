@@ -10389,3 +10389,4 @@ public class Java18MergeParser extends AbstractFSTParser implements Java18MergeP
   }
 
 }
+

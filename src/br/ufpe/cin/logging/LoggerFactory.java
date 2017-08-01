@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.logging.XMLFormatter;
+import java.util.logging.SimpleFormatter;
 
 
 /**
@@ -14,7 +14,7 @@ import java.util.logging.XMLFormatter;
 public class LoggerFactory {
 	
 	public static String logfile = "";
-
+	
 	/**
 	 * Creates and configures a logger.
 	 * @return configured Logger
@@ -33,13 +33,13 @@ public class LoggerFactory {
 			new File(logpath).mkdirs(); //assuring that the directories exists
 			logpath = logpath + "jfstmerge.log";
 			logfile = logpath;
-
 			manageLogBuffer(logpath);
 
 			FileHandler fileHandler = new FileHandler(logpath,true);
 
 			//setting formatter to the handler
-			fileHandler.setFormatter(new XMLFormatter());
+			fileHandler.setFormatter(new SimpleFormatter());
+			fileHandler.setEncoding("UTF-16");
 
 			//setting Level to ALL
 			fileHandler.setLevel(Level.ALL);
@@ -57,17 +57,18 @@ public class LoggerFactory {
 	}
 
 	/**
-	 * When log's size reaches 20 megabytes,a new empty log is started, and the previous one is backup.
+	 * When log's size reaches 10 megabytes,a new empty log is started, and the previous one is backup.
 	 * @param logpath
 	 */
 	private static void manageLogBuffer(String logpath) {
 		File log = new File(logpath);
 		if(log.exists()){
 			long logSizeMB = log.length() / (1024 * 1024);
-			if(logSizeMB > 20){
+			if(logSizeMB >= 10){
 				File newLog = new File(logpath+System.currentTimeMillis());
 				log.renameTo(newLog);
 			}
 		}
 	}
+	
 }

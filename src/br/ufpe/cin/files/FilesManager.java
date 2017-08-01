@@ -359,6 +359,9 @@ public final class FilesManager {
 		String rightConflictingContent= "";
 		boolean isConflictOpen		  = false;
 		boolean isLeftContent		  = false;
+		int lineCounter				  = 0;
+		int startLOC				  = 0;
+		int endLOC				  	  = 0;
 
 		List<MergeConflict> mergeConflicts = new ArrayList<MergeConflict>();
 		List<String> lines = new ArrayList<>();
@@ -367,16 +370,20 @@ public final class FilesManager {
 		Iterator<String> itlines = lines.iterator();
 		while(itlines.hasNext()){
 			String line = itlines.next();
+			lineCounter++;
 			if(line.contains(CONFLICT_HEADER_BEGIN)){
 				isConflictOpen = true;
 				isLeftContent  = true;
+				startLOC = lineCounter;
 			}
 			else if(line.contains(CONFLICT_MID)){
 				isLeftContent = false;
 			}
 			else if(line.contains(CONFLICT_HEADER_END)) {
-				MergeConflict mergeConflict = new MergeConflict(leftConflictingContent,rightConflictingContent);
+				endLOC = lineCounter;
+				MergeConflict mergeConflict = new MergeConflict(leftConflictingContent,rightConflictingContent,startLOC,endLOC);
 				mergeConflicts.add(mergeConflict);
+				
 				//reseting the flags
 				isConflictOpen	= false;
 				isLeftContent   = false;
@@ -578,5 +585,21 @@ public final class FilesManager {
 		int levenshteinDistance = StringUtils.getLevenshteinDistance(first, second);
 		return ((longerLength - levenshteinDistance)/(double) longerLength);
 	}
+	
+	@SuppressWarnings("unused")
+	private static String undoReplaceConflictMarkers(String indentedCode) {
+		// dummy code for identation purposes
+		indentedCode=indentedCode.replaceAll("int mmmm;", "<<<<<<< MINE");
+		indentedCode=indentedCode.replaceAll("int bbbb;", "=======");
+		indentedCode=indentedCode.replaceAll("int yyyy;", ">>>>>>> YOURS");
+		return indentedCode;
+	}
 
+	@SuppressWarnings("unused")
+	private static String replaceConflictMarkers(String sourceCode) {
+		sourceCode = sourceCode.replaceAll("<<<<<<< MINE", "int mmmm;");
+		sourceCode = sourceCode.replaceAll("=======", "int bbbb;");
+		sourceCode = sourceCode.replaceAll(">>>>>>> YOURS", "int yyyy;");
+		return sourceCode;
+	}
 }
