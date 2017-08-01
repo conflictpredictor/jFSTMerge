@@ -35,6 +35,18 @@ import com.beust.jcommander.ParameterException;
  * @author Guilherme
  */
 public class JFSTMerge {
+	
+	//#conflictsAnalyzer 
+	SemistructuredMerge semistructuredMerge = new SemistructuredMerge();
+	
+	public SemistructuredMerge getSemistructuredMerge() {
+		return semistructuredMerge;
+	}
+
+	public void setSemistructuredMerge(SemistructuredMerge semistructuredMerge) {
+		this.semistructuredMerge = semistructuredMerge;
+	}
+	//#conflictsAnalyzer 
 
 	//log of activities
 	private static final Logger LOGGER = LoggerFactory.make();
@@ -156,8 +168,9 @@ public class JFSTMerge {
 				//running unstructured merge first is necessary due to future steps.
 				context.unstructuredOutput = TextualMerge.merge(left, base, right, false);
 				context.unstructuredMergeTime = System.nanoTime() - t0;
-
-				context.semistructuredOutput = SemistructuredMerge.merge(left, base, right, context);
+				//#conflictsAnalyzer 
+				context.semistructuredOutput = this.semistructuredMerge.merge(left, base, right, context);
+				//#conflictsAnalyzer 
 				context.semistructuredMergeTime = context.semistructuredMergeTime + (System.nanoTime() - t0);
 
 				conflictState = checkConflictState(context);
