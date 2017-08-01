@@ -230,8 +230,9 @@ public class JFSTMerge {
 
 	public static void main(String[] args) {
 		JFSTMerge merger = new JFSTMerge();
-		merger.run(args);
-		System.exit(conflictState);
+		/*merger.run(args);
+		System.exit(conflictState);*/
+		merger.mergeRevisions("/home/dell/Documents/doutorado/icse/rev_123ab_456cd/rev_123ab-456cd.revisions");
 	}
 
 	private void run(String[] args) {

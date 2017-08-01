@@ -536,17 +536,17 @@ public final class FilesManager {
 
 		//comparing files content
 		//#conflictsAnalyzer
-		/*if(basecontentrim.equals(leftcontenttrim)){
+		if(basecontentrim.equals(leftcontenttrim) && rightcontenttrim.equals("")){
 			//result is right
 			context.semistructuredOutput = rightcontent;
 			context.unstructuredOutput = rightcontent;
 			result = false;
-		} else if(basecontentrim.equals(rightcontenttrim)){
+		} else if(basecontentrim.equals(rightcontenttrim) && leftcontenttrim.equals("")){
 			//result is left
 			context.semistructuredOutput = leftcontent;
 			context.unstructuredOutput = leftcontent;
 			result = false;
-		} else */
+		} else 
 		//#conflictsAnalyzer
 			if(leftcontenttrim.equals(rightcontenttrim)){
 			//result is both left or right
