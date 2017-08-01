@@ -51,7 +51,9 @@ public class SemistructuredMerge extends Observable
 	 */
 	public String merge(File left, File base, File right, MergeContext context)	throws SemistructuredMergeException, TextualMergeException {
 		try {
-			String filePath = left.getAbsolutePath();
+			//#conflictsAnalyzer
+			String filePath = this.retrievePath(left, base, right);
+			//#conflictsAnalyzer
 			// parsing the files to be merged
 			JParser parser = new JParser();
 			FSTNode leftTree = parser.parse(left);
@@ -348,4 +350,20 @@ public class SemistructuredMerge extends Observable
 			}
 		}
 	}
+	
+	//#conflictsAnalyzer
+	public String retrievePath(File left, File base, File right) {
+		String path = "";
+		if(left != null) {
+			path = left.getAbsolutePath();
+		}else if(base != null) {
+			path = base.getAbsolutePath();
+		}else if(right != null) {
+			path = right.getAbsolutePath();
+		}
+		
+		return path;
+	}
+	//#conflictsAnalyzer
+	
 }
