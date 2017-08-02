@@ -213,7 +213,7 @@ public class JFSTMerge {
 
 	public static void main(String[] args) {
 		JFSTMerge merger = new JFSTMerge();
-		merger.run(args);
+		merger.mergeRevisions("/home/dell/Documents/doutorado/icse/rev_123ab_456cd/rev_123ab-456cd.revisions");
 		System.exit(conflictState);
 	}
 
