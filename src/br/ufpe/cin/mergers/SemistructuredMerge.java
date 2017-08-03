@@ -50,9 +50,10 @@ public class SemistructuredMerge extends Observable
 	 * @throws TextualMergeException
 	 */
 	public String merge(File left, File base, File right, MergeContext context)	throws SemistructuredMergeException, TextualMergeException {
+		String filePath = null;
 		try {
 			//#conflictsAnalyzer
-			String filePath = this.retrievePath(left, base, right);
+			filePath = this.retrievePath(left, base, right);
 			//#conflictsAnalyzer
 			// parsing the files to be merged
 			JParser parser = new JParser();
@@ -68,8 +69,14 @@ public class SemistructuredMerge extends Observable
 
 		} catch (ParseException | FileNotFoundException | UnsupportedEncodingException | TokenMgrError ex) {
 			String message = ExceptionUtils.getCauseMessage(ex);
-			if(ex instanceof FileNotFoundException) //FileNotFoundException does not support custom messages
+			//#conflictsAnalyzer
+			if(ex instanceof FileNotFoundException) {
+				//FileNotFoundException does not support custom messages
 				message = "The merged file was deleted in one version.";
+				setChanged();
+				notifyObservers(filePath);
+			}
+			//#conflictsAnalyzer	
 			throw new SemistructuredMergeException(message, context);
 		}
 
