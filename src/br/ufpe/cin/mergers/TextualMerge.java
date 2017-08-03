@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -92,7 +93,10 @@ public final class TextualMerge {
 	}
 	
 	//#conflictsAnalyzer
-	public static String mergeDiff3(String leftContent, String baseContent, String rightContent, FSTTerminal node) throws TextualMergeException{
+	/*
+	 * this commented code uses the gnu diff3 which is not supported on windows plaftorm. 
+	 * as a solution, the uncommented  mergediff3 method calls git merge*/
+	/*public static String mergeDiff3(String leftContent, String baseContent, String rightContent, FSTTerminal node) throws TextualMergeException{
 		String textualMergeResult = "";
 
 		try {
@@ -136,6 +140,7 @@ public final class TextualMerge {
 
 			Runtime run = Runtime.getRuntime();
 			Process pr = run.exec(mergeCmd);
+			
 			
 			BufferedReader buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
 			String line = "";
@@ -185,7 +190,121 @@ public final class TextualMerge {
 		}
 
 		return textualMergeResult;
+	}*/
+	
+	public static String mergeGit(String leftContent, String baseContent, String rightContent, FSTTerminal node) {
+		String textualMergeResult = "";
+
+		//create temp files
+		File[] files = TextualMerge.createTempFiles(leftContent, baseContent, rightContent); 
+		//call git merge
+		int result = TextualMerge.callGitMerge(files);
+		//read left file content
+		textualMergeResult = TextualMerge.readLeftFile(files[0]);
+		String[] tokens = {leftContent, baseContent, rightContent};
+		if(!textualMergeResult.contains(SemistructuredMerge.DIFF3MERGE_SEPARATOR) && isConflictPredictor(node, tokens)) {
+			textualMergeResult = node.getBody();
+		}	
+		// delete temp files
+		TextualMerge.deleteTempFiles(files);
+
+		return textualMergeResult;
 	}
+	
+	public static File[] createTempFiles(String leftContent, String baseContent, String rightContent) {
+		File [] result = {null, null, null};
+		try {
+			long time = System.currentTimeMillis();
+			File tmpDir = new File(System.getProperty("user.dir") + File.separator + "fstmerge_tmp"+time);
+			tmpDir.mkdir();
+			File fileVar1 = File.createTempFile("fstmerge_var1_", "", tmpDir);
+			File fileBase = File.createTempFile("fstmerge_base_", "", tmpDir);
+			File fileVar2 = File.createTempFile("fstmerge_var2_", "", tmpDir);
+			
+			BufferedWriter writerVar1 = new BufferedWriter(new FileWriter(fileVar1));
+			if(leftContent.length() == 0){
+				writerVar1.write(leftContent);
+			}else{
+				writerVar1.write(leftContent + "\n");
+			}
+			writerVar1.close();
+
+			BufferedWriter writerBase = new BufferedWriter(new FileWriter(fileBase));
+			if(baseContent.length() == 0){
+				writerBase.write(baseContent);
+			}else {
+				writerBase.write(baseContent + "\n");
+			}	
+			writerBase.close();
+			
+			BufferedWriter writerVar2 = new BufferedWriter(new FileWriter(fileVar2));
+			if(rightContent.length() == 0){
+				writerVar2.write(rightContent);
+			}else {
+				writerVar2.write(rightContent + "\n");
+			}
+			writerVar2.close();
+			
+			result[0] = fileVar1;
+			result[1] = fileBase; 
+			result[2] = fileVar2;
+		}catch (IOException e) {
+			e.printStackTrace();
+		}	
+		
+		return result;
+	}
+	
+	public static int callGitMerge(File[] files) {
+		int result = -1;
+		String mergeCmd = "git merge-file --diff3 \"" + files[0].getPath() + "\" \"" +  files[1].getPath() + "\" \"" + files[2].getPath() + "\"";
+		Runtime run = Runtime.getRuntime();
+		try {
+			Process pr = run.exec(mergeCmd);
+			result = pr.waitFor();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
+	
+	public static String readLeftFile(File file) {
+		String leftContent = "";
+		BufferedReader br = null;
+		FileReader fr = null;
+
+		try {
+
+			fr = new FileReader(file);
+			br = new BufferedReader(fr);
+
+			String sCurrentLine;
+
+			while ((sCurrentLine = br.readLine()) != null) {
+				leftContent += sCurrentLine + "\n";
+			}
+			leftContent = leftContent.substring(0, leftContent.length()-1);
+			fr.close();
+			br.close();
+
+		} catch (IOException e) {
+
+			e.printStackTrace();
+
+		}
+		return leftContent;
+	}
+	
+	public static void deleteTempFiles(File[] files) {
+		File tempDir = files[0].getParentFile();
+		files[0].delete();
+		files[1].delete();
+		files[2].delete();
+		tempDir.delete();
+	}
+	
 	//#conflictsAnalyzer
 	
 	//conflictPredictor
