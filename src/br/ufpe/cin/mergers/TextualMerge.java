@@ -285,7 +285,7 @@ public final class TextualMerge {
 			while ((sCurrentLine = br.readLine()) != null) {
 				leftContent += sCurrentLine + "\n";
 			}
-			leftContent = leftContent.substring(0, leftContent.length()-1);
+			//leftContent = leftContent.substring(0, leftContent.length()-1);
 			fr.close();
 			br.close();
 
