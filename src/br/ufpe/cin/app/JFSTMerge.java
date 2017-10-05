@@ -64,8 +64,14 @@ public class JFSTMerge {
 	@Parameter(names = "-o", description = "Destination of the merged content. Optional. If no destination is specified, " + "then it will use \"yours\" as the destination for the merge. ")
 	String outputpath = "";
 
-	@Parameter(names = "-g", description = "Command to identify that the tool is being used as a git merge driver.")
+	@Parameter(names = "-g", description = "Parameter to identify that the tool is being used as a git merge driver.")
 	public static boolean isGit = false;
+
+	@Parameter(names = "-c", description = "Parameter to disable cryptography during logs generation (true or false).",arity = 1)
+	public static boolean isCryptographed = true;
+	
+	@Parameter(names = "-l", description = "Parameter to disable logging of merged files (true or false).",arity = 1)
+	public static boolean logFiles = true;
 
 	/**
 	 * Merges merge scenarios, indicated by .revisions files. 
@@ -75,6 +81,9 @@ public class JFSTMerge {
 	 * @param revisionsPath file path
 	 */
 	public MergeScenario mergeRevisions(String revisionsPath) {
+		//disabling cryptography for performance improvement
+		isCryptographed = false;
+
 		MergeScenario scenario = null;
 		try {
 			//reading the .revisions file line by line to get revisions directories
@@ -215,9 +224,27 @@ public class JFSTMerge {
 		JFSTMerge merger = new JFSTMerge();
 		merger.mergeRevisions("/home/dell/Documents/doutorado/icse/rev_123ab_456cd/rev_123ab-456cd.revisions");
 		System.exit(conflictState);
+
+		/*		new JFSTMerge().mergeFiles(
+						new File("C:/Users/Guilherme/Desktop/test/projects/sisbol/revisions/rev_0533511_8d296b5/rev_left_0533511/sisbol-core/src/main/java/br/mil/eb/cds/sisbol/boletim/util/Messages.java"),
+						new File("C:/Users/Guilherme/Desktop/test/projects/sisbol/revisions/rev_0533511_8d296b5/rev_base_7004707/sisbol-core/src/main/java/br/mil/eb/cds/sisbol/boletim/util/Messages.java"),
+						new File("C:/Users/Guilherme/Desktop/test/projects/sisbol/revisions/rev_0533511_8d296b5/rev_right_8d296b5/sisbol-core/src/main/java/br/mil/eb/cds/sisbol/boletim/util/Messages.java"),
+						null);*/
+
+		/*		try {
+			List<String> listRevisions = new ArrayList<>();
+			BufferedReader reader;
+			reader = Files.newBufferedReader(Paths.get("C:\\sample\\all.revisions"));
+			listRevisions = reader.lines().collect(Collectors.toList());
+			for(String r : listRevisions){
+				new JFSTMerge().mergeRevisions(r);		
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}*/
+
 	}
-
-
 
 	private void run(String[] args) {
 		JCommander commandLineOptions = new JCommander(this);
