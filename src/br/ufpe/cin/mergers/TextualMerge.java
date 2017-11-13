@@ -192,21 +192,35 @@ public final class TextualMerge {
 		return textualMergeResult;
 	}*/
 	
+	/*This method first executes diff3 using jgit api
+	 *ignoring spaces. then, if the code conflicts,
+	 * it calls gitmerge directly from command line
+	 * to get the code base version
+	 * */
 	public static String mergeGit(String leftContent, String baseContent, String rightContent, FSTTerminal node) {
 		String textualMergeResult = "";
-
-		//create temp files
-		File[] files = TextualMerge.createTempFiles(leftContent, baseContent, rightContent); 
-		//call git merge
-		int result = TextualMerge.callGitMerge(files);
-		//read left file content
-		textualMergeResult = TextualMerge.readLeftFile(files[0]);
+		try {
+			//call jgit merge
+			textualMergeResult = merge(leftContent, baseContent, rightContent, true);
+			if(textualMergeResult.contains(SemistructuredMerge.DIFF3MERGE_SEPARATOR)) {
+				//create temp files
+				File[] files = TextualMerge.createTempFiles(leftContent, baseContent, rightContent); 
+				//call git merge
+				int result = TextualMerge.callGitMerge(files);
+				//read left file content
+				textualMergeResult = TextualMerge.readLeftFile(files[0]);
+				// delete temp files
+				TextualMerge.deleteTempFiles(files);
+			}
+		} catch (TextualMergeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		String[] tokens = {leftContent, baseContent, rightContent};
 		if(!textualMergeResult.contains(SemistructuredMerge.DIFF3MERGE_SEPARATOR) && isConflictPredictor(node, tokens)) {
 			textualMergeResult = node.getBody();
 		}	
-		// delete temp files
-		TextualMerge.deleteTempFiles(files);
 
 		return textualMergeResult;
 	}
