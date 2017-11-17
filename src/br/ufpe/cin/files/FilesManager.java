@@ -578,7 +578,17 @@ public final class FilesManager {
 			context.semistructuredOutput = leftcontent;
 			context.unstructuredOutput = leftcontent;
 			result = false;
-		} else 
+		} else if(leftcontenttrim.equals("") && basecontentrim.equals("") && !rightcontenttrim.equals("")) {
+			//result is right
+			context.semistructuredOutput = rightcontent;
+			context.unstructuredOutput = rightcontent;
+			result = false;
+		}else if(rightcontenttrim.equals("") && basecontentrim.equals("") && !leftcontenttrim.equals("")) {
+			//result is left
+			context.semistructuredOutput = leftcontent;
+			context.unstructuredOutput = leftcontent;
+			result = false;
+		} else
 		//#conflictsAnalyzer
 			if(leftcontenttrim.equals(rightcontenttrim)){
 			//result is both left or right
