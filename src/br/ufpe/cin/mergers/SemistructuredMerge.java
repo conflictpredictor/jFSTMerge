@@ -37,6 +37,7 @@ public class SemistructuredMerge extends Observable
 	//#conflictsAnalyzer
 	public static final String DIFF3MERGE_SEPARATOR = "<<<<<<<";
 	public static final String DIFF3MERGE_END = ">>>>>>>";
+	public static final String DIFF3MERGE_BASE = "|||||||";
 	//#conflictsAnalyzer
 
 	/**
@@ -311,7 +312,9 @@ public class SemistructuredMerge extends Observable
 	//#conflictsAnalyzer
 	public void checkForConflictMarkers(FSTTerminal node, String filePath){
 		String nodeBody = node.getBody();
-		if(nodeBody.contains(SemistructuredMerge.MERGE_SEPARATOR) || nodeBody.contains(SemistructuredMerge.DIFF3MERGE_SEPARATOR)){
+		if(nodeBody.contains(SemistructuredMerge.MERGE_SEPARATOR) || 
+				(nodeBody.contains(SemistructuredMerge.DIFF3MERGE_SEPARATOR) &&
+				nodeBody.contains(DIFF3MERGE_BASE))){
 			NodeAndPath nodeAndPath = new NodeAndPath(node, filePath);
 			setChanged();
 			notifyObservers(nodeAndPath);
