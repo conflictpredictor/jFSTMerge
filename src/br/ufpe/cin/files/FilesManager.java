@@ -222,7 +222,7 @@ public final class FilesManager {
 		//StringBuilder content = new StringBuilder();
 		String content = "";
 		try{
-			BufferedReader reader = Files.newBufferedReader(Paths.get(file.getAbsolutePath()), StandardCharsets.ISO_8859_1);
+			BufferedReader reader = Files.newBufferedReader(Paths.get(file.getAbsolutePath()), StandardCharsets.UTF_8);
 			content = reader.lines().collect(Collectors.joining("\n"));
 		}catch(Exception e){
 			//System.err.println(e.getMessage());
@@ -359,6 +359,9 @@ public final class FilesManager {
 		String rightConflictingContent= "";
 		boolean isConflictOpen		  = false;
 		boolean isLeftContent		  = false;
+		int lineCounter				  = 0;
+		int startLOC				  = 0;
+		int endLOC				  	  = 0;
 
 		List<MergeConflict> mergeConflicts = new ArrayList<MergeConflict>();
 		List<String> lines = new ArrayList<>();
@@ -367,16 +370,20 @@ public final class FilesManager {
 		Iterator<String> itlines = lines.iterator();
 		while(itlines.hasNext()){
 			String line = itlines.next();
+			lineCounter++;
 			if(line.contains(CONFLICT_HEADER_BEGIN)){
 				isConflictOpen = true;
 				isLeftContent  = true;
+				startLOC = lineCounter;
 			}
 			else if(line.contains(CONFLICT_MID)){
 				isLeftContent = false;
 			}
 			else if(line.contains(CONFLICT_HEADER_END)) {
-				MergeConflict mergeConflict = new MergeConflict(leftConflictingContent,rightConflictingContent);
+				endLOC = lineCounter;
+				MergeConflict mergeConflict = new MergeConflict(leftConflictingContent,rightConflictingContent,startLOC,endLOC);
 				mergeConflicts.add(mergeConflict);
+
 				//reseting the flags
 				isConflictOpen	= false;
 				isLeftContent   = false;
@@ -446,6 +453,31 @@ public final class FilesManager {
 	}
 
 	/**
+	 * Returns the compatible node of <i>source</i> with <i>id</i>, or null if there isn't.
+	 * @param source
+	 * @param id
+	 */
+	public static FSTNode findNodeByID (FSTNode source, String id){
+		if(source instanceof FSTNonTerminal){
+			for (FSTNode child : ((FSTNonTerminal)source).getChildren()) {
+				FSTNode result = findNodeByID(child, id);
+				if(result!=null){
+					return result;
+				}
+			}
+		} else {
+			if(source instanceof FSTTerminal){
+				if(source.getType().equals("Id")){
+					if(((FSTTerminal) source).getBody().equals(id)){
+						return source;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Estimates the root path of the project owning the files being merged.
 	 * @param context
 	 * @return projects file path, or "" in case not able to estimate
@@ -504,7 +536,7 @@ public final class FilesManager {
 	public static String indentCode(String sourceCode){
 		String indentedCode = sourceCode;
 		try{
-			CompilationUnit indenter = JavaParser.parse(new ByteArrayInputStream(sourceCode.getBytes()));
+			CompilationUnit indenter = JavaParser.parse(new ByteArrayInputStream(sourceCode.getBytes()), StandardCharsets.UTF_8.displayName());
 			indentedCode = indenter.toString();
 		} catch (Exception e){} //in case of any errors, returns the non-indented sourceCode
 		return indentedCode;
@@ -535,17 +567,30 @@ public final class FilesManager {
 		String basecontentrim = (auxbase == null)?"":FilesManager.getStringContentIntoSingleLineNoSpacing(auxbase);
 
 		//comparing files content
-		if(basecontentrim.equals(leftcontenttrim)){
+		//#conflictsAnalyzer
+		if(basecontentrim.equals(leftcontenttrim) && rightcontenttrim.equals("")){
 			//result is right
 			context.semistructuredOutput = rightcontent;
 			context.unstructuredOutput = rightcontent;
 			result = false;
-		} else if(basecontentrim.equals(rightcontenttrim)){
+		} else if(basecontentrim.equals(rightcontenttrim) && leftcontenttrim.equals("")){
 			//result is left
 			context.semistructuredOutput = leftcontent;
 			context.unstructuredOutput = leftcontent;
 			result = false;
-		} else if(leftcontenttrim.equals(rightcontenttrim)){
+		} else if(leftcontenttrim.equals("") && basecontentrim.equals("") && !rightcontenttrim.equals("")) {
+			//result is right
+			context.semistructuredOutput = rightcontent;
+			context.unstructuredOutput = rightcontent;
+			result = false;
+		}else if(rightcontenttrim.equals("") && basecontentrim.equals("") && !leftcontenttrim.equals("")) {
+			//result is left
+			context.semistructuredOutput = leftcontent;
+			context.unstructuredOutput = leftcontent;
+			result = false;
+		} else
+		//#conflictsAnalyzer
+			if(leftcontenttrim.equals(rightcontenttrim)){
 			//result is both left or right
 			context.semistructuredOutput = leftcontent;
 			context.unstructuredOutput = leftcontent;
@@ -553,7 +598,7 @@ public final class FilesManager {
 		}
 		return result;
 	}
-	
+
 	/**
 	 * Compute the similarity between two given strings based on the <i>Levenshtein Distance</i>.
 	 * @param first
@@ -576,4 +621,20 @@ public final class FilesManager {
 		return ((longerLength - levenshteinDistance)/(double) longerLength);
 	}
 
+	@SuppressWarnings("unused")
+	private static String undoReplaceConflictMarkers(String indentedCode) {
+		// dummy code for identation purposes
+		indentedCode=indentedCode.replaceAll("int mmmm;", "<<<<<<< MINE");
+		indentedCode=indentedCode.replaceAll("int bbbb;", "=======");
+		indentedCode=indentedCode.replaceAll("int yyyy;", ">>>>>>> YOURS");
+		return indentedCode;
+	}
+
+	@SuppressWarnings("unused")
+	private static String replaceConflictMarkers(String sourceCode) {
+		sourceCode = sourceCode.replaceAll("<<<<<<< MINE", "int mmmm;");
+		sourceCode = sourceCode.replaceAll("=======", "int bbbb;");
+		sourceCode = sourceCode.replaceAll(">>>>>>> YOURS", "int yyyy;");
+		return sourceCode;
+	}
 }

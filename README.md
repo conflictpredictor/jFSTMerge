@@ -1,5 +1,5 @@
 ### Status
-[![Build Status](https://travis-ci.org/guilhermejccavalcanti/jFSTMerge.png)] (https://travis-ci.org/guilhermejccavalcanti/jFSTMerge)
+[![Build Status](https://api.travis-ci.org/guilhermejccavalcanti/jFSTMerge.svg?branch=master)](https://travis-ci.org/guilhermejccavalcanti/jFSTMerge)
 
 jFSTMerge
 ========
@@ -14,30 +14,43 @@ Compilation
 -----------
 This project uses Gradle to manage all dependencies and versioning. 
 
+
+#### Troubleshooting
+
+If you face error while trying to build the project with gradle, just delete the lines from 10 to 13 of this [file](https://github.com/guilhermejccavalcanti/jFSTMerge/blob/master/build.gradle) 
+
 Installation
 -------------
-Double click on the jar from the /installer folder.
-After installed, the tool is automatically integrated with git, with no need for futher configurations.
-It means that every time you call the "git merge" command, the tool will be executed.
-You can also use the tool standalone as described bellow.
+Double-click on the jar from the [/installer](https://github.com/guilhermejccavalcanti/jFSTMerge/tree/master/installer) folder.
+In case double-click does not work, install with the command 
+`java -jar s3mInstaller.jar`
 
 Usage
 -------------
-Use the jar from the /binary folder or from the installed folder.
+
+Usage data (such as the number of detected conflicts, number of merged scenarios, and more useful details for studying the benefits and drawbacks of the tool) is stored in the `$HOME/.jfstmerge` folder.  A summary of collected statistics that might help one decide to continue using the tool is available in the `jfstmerge.summary` file.
+
+#### Running with git
+
+After installation, the tool is automatically integrated with git, with no need for further configuration. Then every time you invoke the `git merge` command, the tool is executed.
+
+#### Running standalone
+
+Use the jar from the [/binary](https://github.com/guilhermejccavalcanti/jFSTMerge/tree/master/binary) folder, or from the installed folder.
 
 * Merging 3 files:
 
-   `java -jar pathto/jFSTMerge.jar -f "mine" "base" "theirs" -o "output"`
+  `java -jar pathto/jFSTMerge.jar -f "mine" "base" "theirs" -o "output"`
 
 Where *mine*, *base*, *theirs* and *output* are filepaths.
-The attribute -o is optional, if omitted, *theirs* will be used as output file.
+The attribute -o is optional, if omitted, *theirs* is used as the output file.
 
 * Merging 3 directories:
 
-   `java -jar pathto/jFSTMerge.jar -d "mine" "base" "theirs" -o "output"`
- 
+  `java -jar pathto/jFSTMerge.jar -d "mine" "base" "theirs" -o "output"`
+
 Where *mine*, *base*, *theirs* and *output* are directory paths.
-The attribute -o is optional, if omitted, *theirs* will be used as output directory.
+The attribute -o is optional, if omitted, *theirs* is used as the output directory.
 
 <!-- 
 For integration with git type the two commands bellow:
@@ -50,3 +63,27 @@ Then, after the "git merge" command detects conflicts, call the tool with:
 
    `git mergetool -tool=jfstmerge`
 -->
+
+Testing
+-------------
+
+We provide standalone tests in the [/testfiles/shelltests](https://github.com/guilhermejccavalcanti/jFSTMerge/tree/master/testfiles/shelltests) folder in addition to a few [JUnit tests](https://github.com/guilhermejccavalcanti/jFSTMerge/tree/master/src/br/ufpe/cin/mergers/handlers/tests).
+To run theses tests, you will need the shunit2 framework installed:
+
+* On Mac:
+1. Install the homebrew packet manager
+2. Run the command  `brew install shunit2 `
+
+* On Linux:
+1. `sudo apt-get install shunit2`
+
+* On Windows:
+1. Install a Linux [enviroment](https://www.howtogeek.com/249966/how-to-install-and-use-the-linux-bash-shell-on-windows-10/) , and follow the Linux instructions above.
+
+To execute the tests, follow the instructions bellow:
+1. Go to the tesfiles/shelltests directory inside the jFSTMerge project folder
+2. Open the terminal
+3. Run the command `shunit2 test_you_want_to_execute.sh`
+4. Take a look at the output in the terminal to see the result of your tests
+
+The files "example", "exampletxt" and "big"  should be copied to your $HOME directory during the execution of the tests (you can delete them manually if you want after the execution of the tests).

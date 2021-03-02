@@ -1,0 +1,9 @@
+SemistructuredMerge is no longer a final class 
+SemistructuredMerge’s methods are no longer static
+SemistructuredMerge now extends the Observable pattern, and has a method that checks for conflict markers after performing the textual merge, to notify the observers (mergescenario)
+Semistructured merge has a mergecontext attribute
+TextualMerge now has a new method to run diff3 on the files tuples with the same behavior of the merge method from the LineBasedMerger from featurehouse project
+FSTMerge class contains an instance of SemistructuredMerge as attribute
+FSTMerge class has new static attributes that represent diff3 conflict markers
+The areFilesDifferent method from FilesManager class was altered so that only tuples of 3 identical files would be discarded by the mergefiles method from the JFSTMerge class
+

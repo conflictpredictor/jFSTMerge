@@ -3,6 +3,7 @@ package br.ufpe.cin.mergers;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.UnsupportedEncodingException;
+import java.util.Observable;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -26,10 +27,18 @@ import de.ovgu.cide.fstgen.ast.FSTTerminal;
  * beginning from the root, based on structural and nominal similarities.
  * @author Guilherme
  */
-public final class SemistructuredMerge {
+//#conflictsAnalyzer 
+public class SemistructuredMerge extends Observable
+//#conflictsAnalyzer
+{
 
-	static final String MERGE_SEPARATOR = "##FSTMerge##";
-	static final String SEMANTIC_MERGE_MARKER = "~~FSTMerge~~";
+	public static final String MERGE_SEPARATOR = "##FSTMerge##";
+	public static final String SEMANTIC_MERGE_MARKER = "~~FSTMerge~~";
+	//#conflictsAnalyzer
+	public static final String DIFF3MERGE_SEPARATOR = "<<<<<<<";
+	public static final String DIFF3MERGE_END = ">>>>>>>";
+	public static final String DIFF3MERGE_BASE = "|||||||";
+	//#conflictsAnalyzer
 
 	/**
 	 * Three-way semistructured merge of three given files.
@@ -41,8 +50,12 @@ public final class SemistructuredMerge {
 	 * @throws SemistructuredMergeException
 	 * @throws TextualMergeException
 	 */
-	public static String merge(File left, File base, File right, MergeContext context)	throws SemistructuredMergeException, TextualMergeException {
+	public String merge(File left, File base, File right, MergeContext context)	throws SemistructuredMergeException, TextualMergeException {
+		String filePath = null;
 		try {
+			//#conflictsAnalyzer
+			filePath = this.retrievePath(left, base, right);
+			//#conflictsAnalyzer
 			// parsing the files to be merged
 			JParser parser = new JParser();
 			FSTNode leftTree = parser.parse(left);
@@ -50,13 +63,22 @@ public final class SemistructuredMerge {
 			FSTNode rightTree = parser.parse(right);
 
 			// merging
-			context.join(merge(leftTree, baseTree, rightTree));
+			context.join(merge(leftTree, baseTree, rightTree, filePath));
 
 			// handling special kinds of conflicts
 			ConflictsHandler.handle(context);
 
 		} catch (ParseException | FileNotFoundException | UnsupportedEncodingException | TokenMgrError ex) {
-			throw new SemistructuredMergeException(ExceptionUtils.getCauseMessage(ex), context);
+			String message = ExceptionUtils.getCauseMessage(ex);
+			//#conflictsAnalyzer
+			if(ex instanceof FileNotFoundException) {
+				//FileNotFoundException does not support custom messages
+				message = "The merged file was deleted in one version.";
+				setChanged();
+				notifyObservers(filePath);
+			}
+			//#conflictsAnalyzer	
+			throw new SemistructuredMergeException(message, context);
 		}
 
 		// during the parsing process, code indentation is typically lost, so we reindent the code
@@ -70,18 +92,30 @@ public final class SemistructuredMerge {
 	 * @param right tree
 	 * @throws TextualMergeException
 	 */
-	private static MergeContext merge(FSTNode left, FSTNode base, FSTNode right) throws TextualMergeException {
+	private MergeContext merge(FSTNode left, FSTNode base, FSTNode right, String filePath) throws TextualMergeException {
 		// indexes are necessary to a proper matching between nodes
 		left.index 	= 0;
 		base.index 	= 1;
 		right.index = 2;
 
 		MergeContext context = new MergeContext();
+		context.leftTree  = left;
+		context.baseTree  = base;
+		context.rightTree = right;
+		
 		FSTNode mergeLeftBase = superimpose(left, base, null, context, true);
 		FSTNode mergeLeftBaseRight = superimpose(mergeLeftBase, right, null, context, false);
+		
 		removeRemainingBaseNodes(mergeLeftBaseRight, context);
-		mergeMatchedContent(mergeLeftBaseRight, context);
+
+		//#conflictsAnalyzer
+		setChanged();
+		notifyObservers(context);
+		//#conflictsAnalyzer
+		mergeMatchedContent(mergeLeftBaseRight, context, filePath);
+
 		context.superImposedTree = mergeLeftBaseRight;
+		
 		return context;
 	}
 
@@ -95,7 +129,7 @@ public final class SemistructuredMerge {
 	 * @param isProcessingBaseTree
 	 * @return superimposed tree
 	 */
-	private static FSTNode superimpose(FSTNode nodeA, FSTNode nodeB, FSTNonTerminal parent, MergeContext context, boolean isProcessingBaseTree) {
+	private FSTNode superimpose(FSTNode nodeA, FSTNode nodeB, FSTNonTerminal parent, MergeContext context, boolean isProcessingBaseTree) {
 		if (nodeA.compatibleWith(nodeB)) {
 			FSTNode composed = nodeA.getShallowClone();
 			composed.index = nodeB.index;
@@ -106,7 +140,10 @@ public final class SemistructuredMerge {
 				FSTNonTerminal nonterminalB = (FSTNonTerminal) nodeB;
 				FSTNonTerminal nonterminalComposed = (FSTNonTerminal) composed;
 
-				for (FSTNode childB : nonterminalB.getChildren()) { 	// nodes from base or right
+				/*
+				 * nodes from base or right
+				 */
+				for (FSTNode childB : nonterminalB.getChildren()) { 	
 					FSTNode childA = nonterminalA.getCompatibleChild(childB);
 					if (childA == null) { 								// means that a base node was deleted by left, or that a right node was added
 						FSTNode cloneB = childB.getDeepClone();
@@ -114,14 +151,11 @@ public final class SemistructuredMerge {
 							childB.index = nodeB.index;
 						cloneB.index = childB.index;
 
-						// if(!context.deletedBaseNodes.contains(cloneB) &&
-						// !isProcessingBaseTree){ //TODO: needs more testing,
-						// managing removals
 						nonterminalComposed.addChild(cloneB);			// cloneB must be removed afterwards if it is a base node
-						// }
 
 						if (isProcessingBaseTree) {
 							context.deletedBaseNodes.add(cloneB); 		// base nodes deleted by left
+							context.nodesDeletedByLeft.add(cloneB);
 						} else {
 							context.addedRightNodes.add(cloneB); 		// nodes added by right
 						}
@@ -130,11 +164,19 @@ public final class SemistructuredMerge {
 							childA.index = nodeA.index;
 						if (childB.index == -1)
 							childB.index = nodeB.index;
-						nonterminalComposed.addChild(
-								superimpose(childA, childB, nonterminalComposed, context, isProcessingBaseTree));
+						
+						if(!isProcessingBaseTree && context.addedLeftNodes.contains(childA)){ //duplications
+							context.addedRightNodes.add(childB); 		
+						}
+
+						nonterminalComposed.addChild(superimpose(childA, childB, nonterminalComposed, context, isProcessingBaseTree));
 					}
 				}
-				for (FSTNode childA : nonterminalA.getChildren()) { 	// nodes from left, leftBase
+
+				/*
+				 * nodes from left or leftBase
+				 */
+				for (FSTNode childA : nonterminalA.getChildren()) { 	
 					FSTNode childB = nonterminalB.getCompatibleChild(childA);
 					if (childB == null) { 								// is a new node from left, or a deleted base node in right
 						FSTNode cloneA = childA.getDeepClone();
@@ -142,23 +184,17 @@ public final class SemistructuredMerge {
 							childA.index = nodeA.index;
 						cloneA.index = childA.index;
 
-						/*
-						 * if(isProcessingBaseTree &&
-						 * !context.addedLeftNodes.contains(cloneA)){ //is a new
-						 * left node in relation to base
-						 * context.addedLeftNodes.add(cloneA); //node added by
-						 * left }
-						 */
-
 						nonterminalComposed.addChild(cloneA);			 // only if is a new left node =~ it is not a base node
 
 						if (context.deletedBaseNodes.contains(childA)) { // this is only possible when processing right nodes because this is a base node not present either in left and right
 							context.deletedBaseNodes.remove(childA);
 							context.deletedBaseNodes.add(cloneA);
+						}
+
+						if(isProcessingBaseTree){ //node added by left in relation to base
+							context.addedLeftNodes.add(cloneA);
 						} else {
-							if (!context.addedLeftNodes.contains(cloneA)) {
-								context.addedLeftNodes.add(cloneA); 	// node added by left in relation to right
-							}
+							context.nodesDeletedByRight.add(cloneA);
 						}
 					} else {
 						if (!isProcessingBaseTree) {
@@ -168,15 +204,13 @@ public final class SemistructuredMerge {
 				}
 				return nonterminalComposed;
 
-			} else if (nodeA instanceof FSTTerminal && nodeB instanceof FSTTerminal
-					&& parent instanceof FSTNonTerminal) {
+			} else if (nodeA instanceof FSTTerminal && nodeB instanceof FSTTerminal	&& parent instanceof FSTNonTerminal) {
 				FSTTerminal terminalA = (FSTTerminal) nodeA;
 				FSTTerminal terminalB = (FSTTerminal) nodeB;
 				FSTTerminal terminalComposed = (FSTTerminal) composed;
 
 				if (!terminalA.getMergingMechanism().equals("Default")) {
-					terminalComposed.setBody(markContributions(terminalA.getBody(), terminalB.getBody(),
-							isProcessingBaseTree, terminalA.index, terminalB.index));
+					terminalComposed.setBody(markContributions(terminalA.getBody(), terminalB.getBody(),isProcessingBaseTree, terminalA.index, terminalB.index));
 				}
 				return terminalComposed;
 			}
@@ -191,20 +225,17 @@ public final class SemistructuredMerge {
 	 * the origin (left,base or right) in node's body content.
 	 * @return node's body content marked
 	 */
-	private static String markContributions(String bodyA, String bodyB, boolean firstPass, int indexA, int indexB) { 
+	private String markContributions(String bodyA, String bodyB, boolean firstPass, int indexA, int indexB) { 
 		if (bodyA.contains(SEMANTIC_MERGE_MARKER)) {
 			return bodyA + " " + bodyB;
 		} else {
 			if (firstPass) {
-				return SEMANTIC_MERGE_MARKER + " " + bodyA + " " + MERGE_SEPARATOR + " " + bodyB + " "
-						+ MERGE_SEPARATOR;
+				return SEMANTIC_MERGE_MARKER + " " + bodyA + " " + MERGE_SEPARATOR + " " + bodyB + " "	+ MERGE_SEPARATOR;
 			} else {
 				if (indexA == 0) {
-					return SEMANTIC_MERGE_MARKER + " " + bodyA + " " + MERGE_SEPARATOR + " " + MERGE_SEPARATOR + " "
-							+ bodyB;
+					return SEMANTIC_MERGE_MARKER + " " + bodyA + " " + MERGE_SEPARATOR + " " + MERGE_SEPARATOR + " "+ bodyB;
 				} else {
-					return SEMANTIC_MERGE_MARKER + " " + MERGE_SEPARATOR + " " + bodyA + " " + MERGE_SEPARATOR + " "
-							+ bodyB;
+					return SEMANTIC_MERGE_MARKER + " " + MERGE_SEPARATOR + " " + bodyA + " " + MERGE_SEPARATOR + " "+ bodyB;
 				}
 			}
 		}
@@ -216,7 +247,7 @@ public final class SemistructuredMerge {
 	 * @param mergedTree
 	 * @param context
 	 */
-	private static void removeRemainingBaseNodes(FSTNode mergedTree, MergeContext context) {
+	private void removeRemainingBaseNodes(FSTNode mergedTree, MergeContext context) {
 		boolean removed = false;
 		if (!context.deletedBaseNodes.isEmpty()) {
 			for (FSTNode loneBaseNode : context.deletedBaseNodes) {
@@ -247,22 +278,27 @@ public final class SemistructuredMerge {
 	 * @param node to be merged
 	 * @throws TextualMergeException
 	 */
-	private static void mergeMatchedContent(FSTNode node, MergeContext context) throws TextualMergeException {
+	private void mergeMatchedContent(FSTNode node, MergeContext context, String filePath) throws TextualMergeException {
 		if (node instanceof FSTNonTerminal) {
 			for (FSTNode child : ((FSTNonTerminal) node).getChildren())
-				mergeMatchedContent(child, context);
+				mergeMatchedContent(child, context, filePath);
 		} else if (node instanceof FSTTerminal) {
 			if (((FSTTerminal) node).getBody().contains(SemistructuredMerge.MERGE_SEPARATOR)) {
 				String body = ((FSTTerminal) node).getBody() + " ";
 				String[] splittedBodyContent = body.split(SemistructuredMerge.MERGE_SEPARATOR);
 
-				String leftContent = splittedBodyContent[0].replace(SemistructuredMerge.SEMANTIC_MERGE_MARKER, "")
-						.trim();
+				String leftContent = splittedBodyContent[0].replace(SemistructuredMerge.SEMANTIC_MERGE_MARKER, "").trim();
 				String baseContent = splittedBodyContent[1].trim();
 				String rightContent = splittedBodyContent[2].trim();
-
-				String mergedBodyContent = TextualMerge.merge(leftContent, baseContent, rightContent, true);
+				
+				//#conflictsAnalyzer
+				String mergedBodyContent = TextualMerge.mergeGit(leftContent, baseContent, rightContent, (FSTTerminal)node);
+				//#conflictsAnalyzer
+				
 				((FSTTerminal) node).setBody(mergedBodyContent);
+				//#conflictsAnalyzer
+				this.checkForConflictMarkers((FSTTerminal) node, filePath);
+				//#conflictsAnalyzer
 
 				identifyNodesEditedInOnlyOneVersion(node, context, leftContent, baseContent, rightContent);
 
@@ -272,7 +308,21 @@ public final class SemistructuredMerge {
 			System.err.println("Warning: node is neither non-terminal nor terminal!");
 		}
 	}
-
+	
+	//#conflictsAnalyzer
+	public void checkForConflictMarkers(FSTTerminal node, String filePath){
+		String nodeBody = node.getBody();
+		if(nodeBody.contains(SemistructuredMerge.MERGE_SEPARATOR) || 
+				(nodeBody.contains(SemistructuredMerge.DIFF3MERGE_SEPARATOR) &&
+				nodeBody.contains(DIFF3MERGE_BASE))){
+			NodeAndPath nodeAndPath = new NodeAndPath(node, filePath);
+			setChanged();
+			notifyObservers(nodeAndPath);
+			
+		}
+		
+	}
+	//#conflictsAnalyzer
 	/**
 	 * Verifies if a node was deleted/renamed in one of the revisions
 	 * @param node
@@ -281,7 +331,7 @@ public final class SemistructuredMerge {
 	 * @param baseContent
 	 * @param rightContent
 	 */
-	private static void identifyPossibleNodesDeletionOrRenamings(FSTNode node, MergeContext context, String leftContent,
+	private void identifyPossibleNodesDeletionOrRenamings(FSTNode node, MergeContext context, String leftContent,
 			String baseContent, String rightContent) {
 		String leftContenttrim = FilesManager.getStringContentIntoSingleLineNoSpacing(leftContent);
 		String baseContenttrim = FilesManager.getStringContentIntoSingleLineNoSpacing(baseContent);
@@ -289,10 +339,10 @@ public final class SemistructuredMerge {
 		if (!baseContenttrim.isEmpty()) {
 			if (!baseContenttrim.equals(leftContenttrim) && rightContenttrim.isEmpty()) {
 				Pair<String, FSTNode> tuple = Pair.of(baseContent, node);
-				context.deletedRightNodes.add(tuple);
+				context.possibleRenamedRightNodes.add(tuple);
 			} else if (!baseContenttrim.equals(rightContenttrim) && leftContenttrim.isEmpty()) {
 				Pair<String, FSTNode> tuple = Pair.of(baseContent, node);
-				context.deletedLeftNodes.add(tuple);
+				context.possibleRenamedLeftNodes.add(tuple);
 			}
 		}
 	}
@@ -306,7 +356,7 @@ public final class SemistructuredMerge {
 	 * @param baseContent
 	 * @param rightContent
 	 */
-	private static void identifyNodesEditedInOnlyOneVersion(FSTNode node, MergeContext context, String leftContent,
+	private void identifyNodesEditedInOnlyOneVersion(FSTNode node, MergeContext context, String leftContent,
 			String baseContent, String rightContent) {
 		String leftContenttrim = FilesManager.getStringContentIntoSingleLineNoSpacing(leftContent);
 		String baseContenttrim = FilesManager.getStringContentIntoSingleLineNoSpacing(baseContent);
@@ -319,4 +369,20 @@ public final class SemistructuredMerge {
 			}
 		}
 	}
+	
+	//#conflictsAnalyzer
+	public String retrievePath(File left, File base, File right) {
+		String path = "";
+		if(left != null) {
+			path = left.getAbsolutePath();
+		}else if(base != null) {
+			path = base.getAbsolutePath();
+		}else if(right != null) {
+			path = right.getAbsolutePath();
+		}
+		
+		return path;
+	}
+	//#conflictsAnalyzer
+	
 }
